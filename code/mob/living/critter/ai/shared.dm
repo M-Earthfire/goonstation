@@ -116,6 +116,8 @@
 /datum/aiTask/succeedable/move
 	name = "moving"
 	max_fails = 2
+	var/max_frustration = 4 //The amount of times we let it reevaluate before we put a fail into it. Set this to 0 to disable this functionality
+	var/frustration = 0 //the amount of times the target needed to reevaluate its pathing
 	var/max_path_dist = 50 //keeping this low by default, but you can override it - see /datum/aiTask/sequence/goalbased/rally for details
 	var/list/found_path = null
 	var/atom/move_target = null
@@ -137,13 +139,21 @@
 /datum/aiTask/succeedable/move/on_reset()
 	src.found_path = null
 	src.move_target = null
+	src.frustration = 0
 
 
 /datum/aiTask/succeedable/move/on_tick()
 	if(!src.move_target)
 		fails++
 		return
-	if(!length(src.found_path) || GET_DIST(src.found_path[length(src.found_path)], move_target) > distance_from_target) //if the target moved away from the goal of our path or we don't have a path, we need to grab a new one
+	if(!length(src.found_path) || !jpsTurfPassable(src.found_path[1], get_turf(src.holder.owner), src.holder.owner, list(POP_SIMULATED_ONLY = !src.move_through_space)) || GET_DIST(src.found_path[length(src.found_path)], move_target) > distance_from_target)
+		if(src.max_frustration != 0 && length(src.found_path))
+			src.frustration += 1
+			if(src.frustration >= src.max_frustration)
+				src.frustration = 0
+				src.fails += 1
+			//if the target moved away from the goal, or the tile just infront of our way got impassable (heeeeeloooo doors!) of our path or we don't have a path, we need to grab a new one
+			//but it also means we need to pump frustration up in case we want
 		get_path()
 	if(length(src.found_path))
 		holder.move_to_with_path(move_target, src.found_path, 0)
