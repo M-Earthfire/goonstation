@@ -118,7 +118,7 @@
 	max_fails = 2
 	var/max_path_dist = 50 //keeping this low by default, but you can override it - see /datum/aiTask/sequence/goalbased/rally for details
 	var/list/found_path = null
-	var/turf/move_target = null
+	var/atom/move_target = null
 
 // use the target from our holder
 /datum/aiTask/succeedable/move/proc/get_path()
@@ -131,7 +131,7 @@
 		src.found_path = get_path_to(holder.owner, move_target, max_distance=src.max_path_dist, mintargetdist=distance_from_target, simulated_only=!move_through_space)
 		if(GET_DIST(get_turf(holder.target), move_target) <= distance_from_target)
 			holder.target_path = src.found_path
-	if(!src.found_path || !jpsTurfPassable(src.found_path[1], get_turf(src.holder.owner), src.holder.owner)) // no path :C
+	if(!src.found_path || !jpsTurfPassable(src.found_path[1], get_turf(src.holder.owner), src.holder.owner, list(POP_SIMULATED_ONLY = !src.move_through_space))) // no path :C
 		fails++
 
 /datum/aiTask/succeedable/move/on_reset()
@@ -143,7 +143,7 @@
 	if(!src.move_target)
 		fails++
 		return
-	if(!length(src.found_path))
+	if(!length(src.found_path) || GET_DIST(src.found_path[length(src.found_path)], move_target) > distance_from_target) //if the target moved away from the goal of our path or we don't have a path, we need to grab a new one
 		get_path()
 	if(length(src.found_path))
 		holder.move_to_with_path(move_target, src.found_path, 0)
