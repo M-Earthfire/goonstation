@@ -85,6 +85,12 @@ ABSTRACT_TYPE(/obj/machinery/fluid_machinery/unary)
 	HELP_MESSAGE_OVERRIDE("You can connect glass plumbing to this machine. Can pull 100 units from a screwed barrel per cycle.")
 	var/obj/reagent_dispensers/chemicalbarrel/connectedcontainer = null
 
+/obj/machinery/fluid_machinery/unary/input/New()
+	. = ..()
+	SPAWN(0)
+		var/turf/signalling_turf = get_turf(src)
+		SEND_SIGNAL(signalling_turf, COMSIG_TURF_FLUID_PORT_CREATED, src)
+
 /obj/machinery/fluid_machinery/unary/input/initialize()
 	..()
 	src.reagents = src.network?.reagents || new(0)

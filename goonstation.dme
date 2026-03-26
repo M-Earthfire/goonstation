@@ -222,6 +222,7 @@
 #include "code\datums\components\bubble_absorb.dm"
 #include "code\datums\components\bullet_holes.dm"
 #include "code\datums\components\cell_holder.dm"
+#include "code\datums\components\chempipe_interface.dm"
 #include "code\datums\components\clown_disbelief_item.dm"
 #include "code\datums\components\contraband.dm"
 #include "code\datums\components\controlled_by_mob.dm"

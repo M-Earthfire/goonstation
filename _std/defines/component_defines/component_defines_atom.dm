@@ -130,6 +130,8 @@
 	#define COMSIG_TURF_REPLACED "turf_replaced"
 	/// when an atom inside the turfs contents changes density (turf, previous_density, thing)
 	#define COMSIG_TURF_CONTENTS_SET_DENSITY "turf_contents_set_density"
+	/// when a fluid port is created on this turf
+	#define COMSIG_TURF_FLUID_PORT_CREATED "turf_fluid_port_created"
 
 // ---- obj signals ----
 
