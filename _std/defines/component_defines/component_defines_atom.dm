@@ -84,6 +84,10 @@
 
 /// When this piece of machinery calls its process function
 #define COMSIG_MACHINERY_PROCESS "machinery_process"
+/// When the HPD wants to check if this machine has a node it can remove (thing, used_HPD). returns TRUE is it is the case.
+#define COMSIG_MACHINERY_HAS_REMOVEABLE_FLUID_NODE "machinery_has_removeable_fluid_node"
+/// When the HPD tries to order the object to remove their internal fluid node (thing, used_HPD). returns TRUE if sucessfull.
+#define COMSIG_MACHINERY_REMOVE_FLUID_NODE "machinery_remove_fluid_node"
 
 // ---- atom/movable signals ----
 

@@ -43,6 +43,8 @@ TYPEINFO(/datum/component/chempipe_interface)
 	. = ..()
 	var/atom/affected_parent = src.parent
 	RegisterHelpMessageHandler(affected_parent, PROC_REF(get_help_msg))
+	RegisterSignal(affected_parent, COMSIG_MACHINERY_HAS_REMOVEABLE_FLUID_NODE, PROC_REF(check_fluid_node))
+	RegisterSignal(affected_parent, COMSIG_MACHINERY_REMOVE_FLUID_NODE, PROC_REF(on_HPD_removal))
 	if(src.scanned_turf)
 		RegisterSignal(src.scanned_turf, COMSIG_TURF_FLUID_PORT_CREATED, PROC_REF(on_fluid_port_created))
 	if(ismovable(src.parent))
@@ -54,6 +56,8 @@ TYPEINFO(/datum/component/chempipe_interface)
 	var/atom/affected_parent = src.parent
 	UnregisterHelpMessageHandler(affected_parent)
 	UnregisterSignal(affected_parent, COMSIG_MOVABLE_SET_LOC)
+	UnregisterSignal(affected_parent, COMSIG_MACHINERY_HAS_REMOVEABLE_FLUID_NODE)
+	UnregisterSignal(affected_parent, COMSIG_MACHINERY_REMOVE_FLUID_NODE)
 	if(src.scanned_turf)
 		UnregisterSignal(src.scanned_turf, COMSIG_TURF_FLUID_PORT_CREATED)
 		src.scanned_turf = null
@@ -61,8 +65,26 @@ TYPEINFO(/datum/component/chempipe_interface)
 	src.recreate_port(src.scanned_turf)
 	QDEL_NULL(src.node_underlay)
 
+/// This Proc searches on the parent's tile for a fluid port and tries to replace it
+/datum/component/chempipe_interface/proc/rescan_for_port()
+	var/atom/affected_parent = src.parent
+	if(!isturf(affected_parent.loc))
+		return
+	var/turf/turf_to_check = affected_parent.loc
+	for(var/obj/machinery/searched_machinery in turf_to_check.contents)
+		if(istype(searched_machinery, /obj/machinery/fluid_machinery/unary/input))
+			//if we found on on our tile, replace it
+			return src.replace_port(searched_machinery)
+
 
 /// ----------------------- Signal-related Procs -----------------------
+
+/datum/component/chempipe_interface/proc/on_HPD_removal(var/affected_parent, var/obj/used_HPD)
+	return src.remove_fluid_node()
+
+/datum/component/chempipe_interface/proc/check_fluid_node(var/affected_parent, var/obj/used_HPD)
+	if(src.connecting_node)
+		return TRUE
 
 /datum/component/chempipe_interface/proc/on_fluid_port_created(var/affected_turf, var/obj/machinery/fluid_machinery/unary/input/new_fluid_port)
 	// we got a port played on our tile, let's try to grab it
@@ -94,22 +116,29 @@ TYPEINFO(/datum/component/chempipe_interface)
 
 /// ----------------------- -----------------------
 
+/// This proc removes the internal unary fluid node
+/datum/component/chempipe_interface/proc/remove_fluid_node(var/turf/new_port_destination)
+	if(!src.connecting_node)
+		return
+	if(src.on_disconnect_proc)
+		call(src.parent, src.on_disconnect_proc)(src.parent, src.connecting_node, new_port_destination)
+	UnregisterSignal(src.connecting_node, COMSIG_MACHINERY_PROCESS)
+	QDEL_NULL(src.connecting_node)
+	src.update_overlay()
+	return TRUE
+
 /// This proc removes the internal unary fluid node and places a fluid port at port_destination, if an internal fluid node exists, removing the old one
 /// Returns TRUE if the fluid port was set sucessfully
 /datum/component/chempipe_interface/proc/recreate_port(var/turf/port_destination)
 	if(!src.connecting_node)
 		return
-	if(src.on_disconnect_proc)
-		call(src.parent, src.on_disconnect_proc)(src.parent, src.connecting_node, port_destination)
 	var/port_direction = src.connecting_node.dir
-	UnregisterSignal(src.connecting_node, COMSIG_MACHINERY_PROCESS)
-	QDEL_NULL(src.connecting_node)
+	src.remove_fluid_node(port_destination)
 	if(port_destination && !src.parent.qdeled && !src.parent.disposed)
 		//after we removed the old fluid node, we can place a fluid port at the new direction
 		//the preloader is needed because else we aren't able to set a direction within new()
 		new /dmm_suite/preloader(port_destination, list("dir" = port_direction))
 		new /obj/machinery/fluid_machinery/unary/input(port_destination)
-		src.update_overlay()
 		return TRUE
 
 
