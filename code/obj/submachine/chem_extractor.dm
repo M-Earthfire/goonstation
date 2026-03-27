@@ -33,7 +33,7 @@ TYPEINFO(/obj/submachine/chem_extractor)
 			ST.name = "Storage Tank [count]"
 			count++
 		AddComponent(/datum/component/transfer_input/quickloading, allowed, "tryLoading")
-		AddComponent(/datum/component/chempipe_interface, null, null, PROC_REF(chempipe_interface_on_process_tick), TRUE)
+		AddComponent(/datum/component/fluid_pipe_interface, null, null, PROC_REF(chempipe_interface_on_process_tick), TRUE)
 		AddComponent(/datum/component/transfer_output)
 		src.parent_item = parent_item
 

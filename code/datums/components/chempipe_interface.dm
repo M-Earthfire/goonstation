@@ -1,4 +1,4 @@
-TYPEINFO(/datum/component/chempipe_interface)
+TYPEINFO(/datum/component/fluid_pipe_interface)
 	initialization_args = list(
 		ARG_INFO("proc_on_connect", DATA_INPUT_REF, "The proc reference that will be called AFTER the component replaced a port with a connecting_node"),
 		ARG_INFO("proc_on_disconnect", DATA_INPUT_REF, "The proc reference that will be called BEFORE the component replaces connecting_node with a port"),
@@ -10,7 +10,7 @@ TYPEINFO(/datum/component/chempipe_interface)
 ///This component will replace the fluid port with a unary node that and will relay signals between the machine in question and the port
 ///This component will take care that the node gets replaced with a fluid port again whenever it's parent gets moved, destroyed or when this component is removed.
 
-/datum/component/chempipe_interface
+/datum/component/fluid_pipe_interface
 	dupe_mode = COMPONENT_DUPE_UNIQUE // we don't want a new component initiallizing over the old one to delete an already existing fluid pipe node
 	/// This the fluid node that will replace the build interface
 	var/obj/machinery/fluid_machinery/unary/node/connecting_node = null
@@ -29,7 +29,7 @@ TYPEINFO(/datum/component/chempipe_interface)
 
 
 
-/datum/component/chempipe_interface/Initialize(var/connect_proc, var/disconnect_proc, var/process_proc, var/scan_on_creation = TRUE)
+/datum/component/fluid_pipe_interface/Initialize(var/connect_proc, var/disconnect_proc, var/process_proc, var/scan_on_creation = TRUE)
 	. = ..()
 	if(!src.parent || !isatom(src.parent))
 		return COMPONENT_INCOMPATIBLE
@@ -43,7 +43,7 @@ TYPEINFO(/datum/component/chempipe_interface)
 		src.scanned_turf = get_turf(new_parent.loc)
 
 
-/datum/component/chempipe_interface/RegisterWithParent()
+/datum/component/fluid_pipe_interface/RegisterWithParent()
 	. = ..()
 	var/atom/affected_parent = src.parent
 	RegisterHelpMessageHandler(affected_parent, PROC_REF(get_help_msg))
@@ -59,12 +59,13 @@ TYPEINFO(/datum/component/chempipe_interface)
 		src.rescan_for_port()
 
 
-/datum/component/chempipe_interface/UnregisterFromParent()
+/datum/component/fluid_pipe_interface/UnregisterFromParent()
 	. = ..()
 	var/atom/affected_parent = src.parent
 	UnregisterHelpMessageHandler(affected_parent)
 	UnregisterSignal(affected_parent, COMSIG_MOVABLE_SET_LOC)
 	UnregisterSignal(affected_parent, COMSIG_MACHINERY_HAS_REMOVEABLE_FLUID_NODE)
+	UnregisterSignal(affected_parent, COMSIG_MACHINERY_CAN_RECEIVE_FLUID_NODE)
 	UnregisterSignal(affected_parent, COMSIG_MACHINERY_REMOVE_FLUID_NODE)
 	if(src.scanned_turf)
 		UnregisterSignal(src.scanned_turf, COMSIG_TURF_FLUID_PORT_CREATED)
@@ -74,7 +75,7 @@ TYPEINFO(/datum/component/chempipe_interface)
 	QDEL_NULL(src.node_underlay)
 
 /// This Proc searches on the parent's tile for a fluid port and tries to replace it
-/datum/component/chempipe_interface/proc/rescan_for_port()
+/datum/component/fluid_pipe_interface/proc/rescan_for_port()
 	var/atom/affected_parent = src.parent
 	if(!isturf(affected_parent.loc))
 		return
@@ -87,32 +88,32 @@ TYPEINFO(/datum/component/chempipe_interface)
 
 /// ----------------------- Signal-related Procs -----------------------
 
-/datum/component/chempipe_interface/proc/on_node_init(var/affected_node)
+/datum/component/fluid_pipe_interface/proc/on_node_init(var/affected_node)
 	//we give this node an internal reagent storage so we can transfer directly into the network.
 	src.connecting_node.reagents = src.connecting_node.network?.reagents || new /datum/reagents(0)
 
-/datum/component/chempipe_interface/proc/on_HPD_removal(var/affected_parent, var/obj/used_HPD)
+/datum/component/fluid_pipe_interface/proc/on_HPD_removal(var/affected_parent, var/obj/used_HPD)
 	return src.remove_fluid_node()
 
-/datum/component/chempipe_interface/proc/check_can_receive(var/affected_parent, var/obj/used_HPD)
+/datum/component/fluid_pipe_interface/proc/check_can_receive(var/affected_parent, var/obj/used_HPD)
 	if(!src.connecting_node)
 		return TRUE
 
-/datum/component/chempipe_interface/proc/check_fluid_node(var/affected_parent, var/obj/used_HPD)
+/datum/component/fluid_pipe_interface/proc/check_fluid_node(var/affected_parent, var/obj/used_HPD)
 	if(src.connecting_node)
 		return TRUE
 
-/datum/component/chempipe_interface/proc/on_fluid_port_created(var/affected_turf, var/obj/machinery/fluid_machinery/unary/input/new_fluid_port)
+/datum/component/fluid_pipe_interface/proc/on_fluid_port_created(var/affected_turf, var/obj/machinery/fluid_machinery/unary/input/new_fluid_port)
 	// we got a port played on our tile, let's try to grab it
 	return src.replace_port(new_fluid_port)
 
-/datum/component/chempipe_interface/proc/get_help_msg(atom/movable/viewed_parent, mob/viewer, list/lines)
+/datum/component/fluid_pipe_interface/proc/get_help_msg(atom/movable/viewed_parent, mob/viewer, list/lines)
 	if(src.connecting_node)
 		lines += "[viewed_parent] can be disconnected from the fluid network by using a HPD's remove-mode on it."
 	else
 		lines += "[viewed_parent] can be connected to a fluid network by placing a fluid port under it."
 
-/datum/component/chempipe_interface/proc/on_parent_move(var/affected_parent, var/previous_location)
+/datum/component/fluid_pipe_interface/proc/on_parent_move(var/affected_parent, var/previous_location)
 	var/atom/moved_parent = src.parent
 	if(src.connecting_node && previous_location != moved_parent.loc)
 		// if we changed our location and we had a connected node, we need to remove the location
@@ -124,7 +125,7 @@ TYPEINFO(/datum/component/chempipe_interface)
 			src.scanned_turf = moved_parent.loc
 			RegisterSignal(src.scanned_turf, COMSIG_TURF_FLUID_PORT_CREATED, PROC_REF(on_fluid_port_created))
 
-/datum/component/chempipe_interface/proc/on_node_process(var/obj/machinery/fluid_machinery/unary/node/processing_node, var/mult)
+/datum/component/fluid_pipe_interface/proc/on_node_process(var/obj/machinery/fluid_machinery/unary/node/processing_node, var/mult)
 	if(!src.on_process_proc)
 		return
 	//we just return the proc we need to call on our parent
@@ -133,12 +134,13 @@ TYPEINFO(/datum/component/chempipe_interface)
 /// ----------------------- -----------------------
 
 /// This proc removes the internal unary fluid node
-/datum/component/chempipe_interface/proc/remove_fluid_node(var/turf/new_port_destination)
+/datum/component/fluid_pipe_interface/proc/remove_fluid_node(var/turf/new_port_destination)
 	if(!src.connecting_node)
 		return
 	if(src.on_disconnect_proc)
 		call(src.parent, src.on_disconnect_proc)(src.parent, src.connecting_node, new_port_destination)
 	UnregisterSignal(src.connecting_node, COMSIG_MACHINERY_PROCESS)
+	UnregisterSignal(src.connecting_node, COMSIG_FLUID_PIPE_ON_INIT)
 	if(istype(src.connecting_node.reagents, /datum/reagents/flow_network))
 		// we need to specifically check for the flow network subtype here, because we ports and these nodes share the same datum
 		// if we don't drop the reference, we delete the whole fluid networks reagent datum
@@ -149,7 +151,7 @@ TYPEINFO(/datum/component/chempipe_interface)
 
 /// This proc removes the internal unary fluid node and places a fluid port at port_destination, if an internal fluid node exists, removing the old one
 /// Returns TRUE if the fluid port was set sucessfully
-/datum/component/chempipe_interface/proc/recreate_port(var/turf/port_destination)
+/datum/component/fluid_pipe_interface/proc/recreate_port(var/turf/port_destination)
 	if(!src.connecting_node)
 		return
 	var/port_direction = src.connecting_node.dir
@@ -165,7 +167,7 @@ TYPEINFO(/datum/component/chempipe_interface)
 
 /// This proc replaces a given port with an internal unary fluid node
 /// This proc returns TRUE if the port in question was sucessfully replaced
-/datum/component/chempipe_interface/proc/replace_port(var/obj/machinery/fluid_machinery/unary/input/port_to_replace)
+/datum/component/fluid_pipe_interface/proc/replace_port(var/obj/machinery/fluid_machinery/unary/input/port_to_replace)
 	if(!istype(port_to_replace) || src.connecting_node)
 		return
 	//we save the location so we can set the new node to that location once we removed the port
@@ -184,7 +186,7 @@ TYPEINFO(/datum/component/chempipe_interface)
 	src.update_overlay()
 	return TRUE
 
-/datum/component/chempipe_interface/proc/update_overlay()
+/datum/component/fluid_pipe_interface/proc/update_overlay()
 	var/atom/affected_parent = src.parent
 	if(!src.connecting_node)
 		if(src.node_underlay)
