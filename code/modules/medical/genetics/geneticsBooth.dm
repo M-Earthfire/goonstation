@@ -33,7 +33,11 @@
 
 
 TYPEINFO(/obj/machinery/genetics_booth)
-	mats = 40
+	mats = list(
+		"metal" = 15,
+		"crystal" = 5,
+		"energy" = 10,
+	)
 	start_speech_modifiers = null
 	start_speech_outputs = list(SPEECH_OUTPUT_SPOKEN_SUBTLE)
 
@@ -338,11 +342,11 @@ TYPEINFO(/obj/machinery/genetics_booth)
 								account = FindBankAccountByName(selected_product.registered_sale_id)
 								if (account)
 									account["current_money"] += selected_product.cost/2
-									wagesystem.research_budget += selected_product.cost/2
+									wagesystem.budgets[BUDGET_CAT_DEPT_MEDICAL] += selected_product.cost/2
 								else
-									wagesystem.research_budget += selected_product.cost
+									wagesystem.budgets[BUDGET_CAT_DEPT_MEDICAL] += selected_product.cost
 							else
-								wagesystem.research_budget += selected_product.cost
+								wagesystem.budgets[BUDGET_CAT_DEPT_MEDICAL] += selected_product.cost
 
 							src.say("Thank you for your patronage, <b>[M.name]</b>.", flags = SAYFLAG_IGNORE_HTML)
 
@@ -358,7 +362,7 @@ TYPEINFO(/obj/machinery/genetics_booth)
 		if (split_with)
 			string += "Splitting half of profits with [split_with]."
 
-		pdaSignal.data = list("address_1"="00000000", "command"="text_message", "sender_name"="GENEBOOTH-MAILBOT", "group"=list(MGD_MEDRESEACH, MGA_SALES), "sender"="00000000", "message"=string)
+		pdaSignal.data = list("address_1"="00000000", "command"="text_message", "sender_name"="GENEBOOTH-MAILBOT", "group"=list(MGT_GENETICS, MGA_SALES), "sender"="00000000", "message"=string)
 		SEND_SIGNAL(src, COMSIG_MOVABLE_POST_RADIO_PACKET, pdaSignal)
 
 		//playsound BEEP BEEEEEEEEEEP
@@ -368,7 +372,7 @@ TYPEINFO(/obj/machinery/genetics_booth)
 
 		var/string = "Notification: [GBP.name] has sold out!"
 
-		pdaSignal.data = list("address_1"="00000000", "command"="text_message", "sender_name"="GENEBOOTH-MAILBOT", "group"=list(MGD_MEDRESEACH, MGA_SALES), "sender"="00000000", "message"=string)
+		pdaSignal.data = list("address_1"="00000000", "command"="text_message", "sender_name"="GENEBOOTH-MAILBOT", "group"=list(MGT_GENETICS, MGA_SALES), "sender"="00000000", "message"=string)
 		SEND_SIGNAL(src, COMSIG_MOVABLE_POST_RADIO_PACKET, pdaSignal)
 
 	Cross(var/mob/M)
@@ -437,3 +441,9 @@ TYPEINFO(/obj/machinery/genetics_booth)
 	//sound effects
 	//do slight damage to occupant on jumble?
 
+/obj/item/electronics/frame/flatpack/genetics_booth
+	name = "Gene Booth Flatpack Frame"
+	desc = "An undeployed gene booth, looks like it could be deployed by using it in-hand."
+	store_type = /obj/machinery/genetics_booth
+	viewstat = 2
+	secured = 2
