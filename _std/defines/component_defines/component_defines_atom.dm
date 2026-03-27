@@ -59,6 +59,8 @@
 	#define COMSIG_CORD_RETRACT "cord_retract"
 	/// sent to the signal jamming thing when it successfully blocks a signal (signal)
 	#define COMSIG_SIGNAL_JAMMED "signal_jammed"
+	/// sent when something was build out of a frame (thing, user, newly_build)
+	#define COMSIG_BUILD_FROM_FRAME "build_from_frame"
 
 // ---- minimap ----
 
@@ -86,8 +88,12 @@
 #define COMSIG_MACHINERY_PROCESS "machinery_process"
 /// When the HPD wants to check if this machine has a node it can remove (thing, used_HPD). returns TRUE is it is the case.
 #define COMSIG_MACHINERY_HAS_REMOVEABLE_FLUID_NODE "machinery_has_removeable_fluid_node"
+/// When the HPD wants to check if this machine could potentionally have a node (thing, used_HPD). returns TRUE is it is the case.
+#define COMSIG_MACHINERY_CAN_RECEIVE_FLUID_NODE "machinery_can_receive_fluid_node"
 /// When the HPD tries to order the object to remove their internal fluid node (thing, used_HPD). returns TRUE if sucessfull.
 #define COMSIG_MACHINERY_REMOVE_FLUID_NODE "machinery_remove_fluid_node"
+/// sent when the fluid pipe gets initialized (thing)
+#define COMSIG_FLUID_PIPE_ON_INIT "fluid_pipe_on_init"
 
 // ---- atom/movable signals ----
 

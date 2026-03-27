@@ -118,11 +118,15 @@ TYPEINFO(/obj/item/places_pipes)
 				 null, null, null, INTERRUPT_MOVE | INTERRUPT_STUNNED | INTERRUPT_ATTACKED)
 
 	else
-		if(!issimulatedturf(target) && !istype(target, /turf/space))
+		if(!isturf(target) && (!istype(src.selection, /datum/pipe_recipe/fluid/machine/unary/port) || !SEND_SIGNAL(target, COMSIG_MACHINERY_CAN_RECEIVE_FLUID_NODE, src)))
+			//we are not targeting a turf and the machine we are targeting can either not receive a fluid node, or we don't have the fluid input selected, so we return here.
+			return
+		var/turf/target_turf = get_turf(target)
+		if(!issimulatedturf(target_turf) && !istype(target_turf, /turf/space))
 			return
 		var/directs = selection.get_directions(direction)
 		if(istype(src.selection, /datum/pipe_recipe/atmos))
-			for(var/obj/machinery/atmospherics/device in target)
+			for(var/obj/machinery/atmospherics/device in target_turf)
 				if((device.initialize_directions & directs))
 					boutput(user, SPAN_ALERT("Something is occupying that direction!"))
 					return
@@ -131,7 +135,7 @@ TYPEINFO(/obj/item/places_pipes)
 					return
 		else
 			var/obj/fluid_pipe/fluidthingy
-			for(var/obj/device in target)
+			for(var/obj/device in target_turf)
 				if(!istype(device, /obj/fluid_pipe) && !istype(device, /obj/machinery/fluid_machinery))
 					continue
 				fluidthingy = device
@@ -151,7 +155,7 @@ TYPEINFO(/obj/item/places_pipes)
 			return
 		var/icon/rotated_icon = icon(selection.icon, selection.icon_state, src.direction)
 		var/datum/action/bar/icon/callback/actionbar = new (\
-			target, src, src.dispenser_delay, PROC_REF(create_item), list(target, user, selection, direction),\
+			target_turf, src, src.dispenser_delay, PROC_REF(create_item), list(target_turf, user, selection, direction),\
 			rotated_icon, null, null, INTERRUPT_MOVE | INTERRUPT_STUNNED | INTERRUPT_ATTACKED
 		)
 		actions.start(actionbar, user)

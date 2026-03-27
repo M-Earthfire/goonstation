@@ -58,6 +58,7 @@ ABSTRACT_TYPE(/obj/machinery/fluid_machinery/unary)
 				src.network = target.network
 				src.network.machines += src
 			break
+	SEND_SIGNAL(src, COMSIG_FLUID_PIPE_ON_INIT)
 
 /obj/machinery/fluid_machinery/unary/refresh_network(datum/flow_network/network)
 	src.network?.machines -= src
@@ -94,6 +95,14 @@ ABSTRACT_TYPE(/obj/machinery/fluid_machinery/unary)
 /obj/machinery/fluid_machinery/unary/input/initialize()
 	..()
 	src.reagents = src.network?.reagents || new(0)
+
+
+/obj/machinery/fluid_machinery/unary/input/disposing()
+	if(istype(src.reagents, /datum/reagents/flow_network))
+		// we need to specifically check for the flow network subtype here, because we ports and these nodes share the same datum
+		// if we don't drop the reference, we delete the whole fluid networks reagent datum
+		src.reagents = null
+	..()
 
 /obj/machinery/fluid_machinery/unary/input/process()
 	src.connectedcontainer?.reagents.trans_to(src, 100)
@@ -569,6 +578,7 @@ ABSTRACT_TYPE(/obj/machinery/fluid_machinery/binary)
 				src.network2 = target.network
 				src.network2.machines += src
 			break
+	SEND_SIGNAL(src, COMSIG_FLUID_PIPE_ON_INIT)
 
 /obj/machinery/fluid_machinery/binary/refresh_network(datum/flow_network/network)
 	src.network1?.machines -= src
@@ -728,6 +738,7 @@ ABSTRACT_TYPE(/obj/machinery/fluid_machinery/trinary)
 				src.network3 = target.network
 				src.network3.machines += src
 			break
+	SEND_SIGNAL(src, COMSIG_FLUID_PIPE_ON_INIT)
 
 /obj/machinery/fluid_machinery/trinary/refresh_network(datum/flow_network/network)
 	src.network1?.machines -= src

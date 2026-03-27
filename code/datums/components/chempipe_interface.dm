@@ -3,6 +3,7 @@ TYPEINFO(/datum/component/chempipe_interface)
 		ARG_INFO("proc_on_connect", DATA_INPUT_REF, "The proc reference that will be called AFTER the component replaced a port with a connecting_node"),
 		ARG_INFO("proc_on_disconnect", DATA_INPUT_REF, "The proc reference that will be called BEFORE the component replaces connecting_node with a port"),
 		ARG_INFO("proc_on_process", DATA_INPUT_REF, "The proc reference that will be called when the chemical node processes"),
+		ARG_INFO("scan_on_creation", DATA_INPUT_BOOL, "Should this object try to find a port upon creation/building from frame?"),
 	)
 
 ///This component is intended for 1-tile sized objects to be able to be easily connected by placing a fluid pipe port on their tile.
@@ -23,10 +24,12 @@ TYPEINFO(/datum/component/chempipe_interface)
 	var/on_disconnect_proc = null
 	///The Procref that will get called when the node processes
 	var/on_process_proc = null
+	///if set to TRUE (by default), this object will scan for a input pipe upon being created
+	var/should_scan_on_creation = TRUE
 
 
 
-/datum/component/chempipe_interface/Initialize(var/connect_proc, var/disconnect_proc, var/process_proc)
+/datum/component/chempipe_interface/Initialize(var/connect_proc, var/disconnect_proc, var/process_proc, var/scan_on_creation = TRUE)
 	. = ..()
 	if(!src.parent || !isatom(src.parent))
 		return COMPONENT_INCOMPATIBLE
@@ -34,6 +37,7 @@ TYPEINFO(/datum/component/chempipe_interface)
 	src.on_connect_proc = connect_proc
 	src.on_disconnect_proc = disconnect_proc
 	src.on_process_proc = process_proc
+	src.should_scan_on_creation = scan_on_creation
 	//maybe we are stuck somewhere like e.g. a frame, so we need to account for that
 	if(isturf(new_parent.loc))
 		src.scanned_turf = get_turf(new_parent.loc)
@@ -44,11 +48,15 @@ TYPEINFO(/datum/component/chempipe_interface)
 	var/atom/affected_parent = src.parent
 	RegisterHelpMessageHandler(affected_parent, PROC_REF(get_help_msg))
 	RegisterSignal(affected_parent, COMSIG_MACHINERY_HAS_REMOVEABLE_FLUID_NODE, PROC_REF(check_fluid_node))
+	RegisterSignal(affected_parent, COMSIG_MACHINERY_CAN_RECEIVE_FLUID_NODE, PROC_REF(check_can_receive))
 	RegisterSignal(affected_parent, COMSIG_MACHINERY_REMOVE_FLUID_NODE, PROC_REF(on_HPD_removal))
 	if(src.scanned_turf)
 		RegisterSignal(src.scanned_turf, COMSIG_TURF_FLUID_PORT_CREATED, PROC_REF(on_fluid_port_created))
 	if(ismovable(src.parent))
 		RegisterSignal(src.parent, COMSIG_MOVABLE_SET_LOC, PROC_REF(on_parent_move))
+	if(src.should_scan_on_creation)
+		RegisterSignal(src.parent, COMSIG_BUILD_FROM_FRAME, PROC_REF(rescan_for_port))
+		src.rescan_for_port()
 
 
 /datum/component/chempipe_interface/UnregisterFromParent()
@@ -79,8 +87,16 @@ TYPEINFO(/datum/component/chempipe_interface)
 
 /// ----------------------- Signal-related Procs -----------------------
 
+/datum/component/chempipe_interface/proc/on_node_init(var/affected_node)
+	//we give this node an internal reagent storage so we can transfer directly into the network.
+	src.connecting_node.reagents = src.connecting_node.network?.reagents || new /datum/reagents(0)
+
 /datum/component/chempipe_interface/proc/on_HPD_removal(var/affected_parent, var/obj/used_HPD)
 	return src.remove_fluid_node()
+
+/datum/component/chempipe_interface/proc/check_can_receive(var/affected_parent, var/obj/used_HPD)
+	if(!src.connecting_node)
+		return TRUE
 
 /datum/component/chempipe_interface/proc/check_fluid_node(var/affected_parent, var/obj/used_HPD)
 	if(src.connecting_node)
@@ -123,6 +139,10 @@ TYPEINFO(/datum/component/chempipe_interface)
 	if(src.on_disconnect_proc)
 		call(src.parent, src.on_disconnect_proc)(src.parent, src.connecting_node, new_port_destination)
 	UnregisterSignal(src.connecting_node, COMSIG_MACHINERY_PROCESS)
+	if(istype(src.connecting_node.reagents, /datum/reagents/flow_network))
+		// we need to specifically check for the flow network subtype here, because we ports and these nodes share the same datum
+		// if we don't drop the reference, we delete the whole fluid networks reagent datum
+		src.connecting_node.reagents = null
 	QDEL_NULL(src.connecting_node)
 	src.update_overlay()
 	return TRUE
@@ -138,7 +158,8 @@ TYPEINFO(/datum/component/chempipe_interface)
 		//after we removed the old fluid node, we can place a fluid port at the new direction
 		//the preloader is needed because else we aren't able to set a direction within new()
 		new /dmm_suite/preloader(port_destination, list("dir" = port_direction))
-		new /obj/machinery/fluid_machinery/unary/input(port_destination)
+		var/obj/machinery/fluid_machinery/unary/input/new_port = new /obj/machinery/fluid_machinery/unary/input(port_destination)
+		new_port.initialize()
 		return TRUE
 
 
@@ -153,6 +174,9 @@ TYPEINFO(/datum/component/chempipe_interface)
 	//the preloader is needed because else we aren't able to set a direction within new()
 	new /dmm_suite/preloader(get_turf(src.parent), list("dir" = port_direction))
 	src.connecting_node = new /obj/machinery/fluid_machinery/unary/node (get_turf(src.parent))
+	//we need to register the signal before initializing the fluid machine, so we connect to the fluid network properly
+	RegisterSignal(src.connecting_node, COMSIG_FLUID_PIPE_ON_INIT, PROC_REF(on_node_init))
+	src.connecting_node.initialize()
 	if(src.on_connect_proc)
 		call(src.parent, src.on_connect_proc)(src.parent, src.connecting_node)
 	if(src.on_process_proc)
@@ -162,17 +186,14 @@ TYPEINFO(/datum/component/chempipe_interface)
 
 /datum/component/chempipe_interface/proc/update_overlay()
 	var/atom/affected_parent = src.parent
-	if(!affected_parent)
-		//why the fuck is the parent not an atom? Remember me to make init crash when that is the case.
-		return
 	if(!src.connecting_node)
 		if(src.node_underlay)
 			// our node got removed, so we don't have an overlay anymore
-			affected_parent.overlays -= src.node_underlay
+			affected_parent.underlays -= src.node_underlay
 			QDEL_NULL(src.node_underlay)
 		return
 	if(!src.node_underlay)
-		src.node_underlay = image(icon = 'icons/obj/fluidpipes/fluid_machines.dmi',loc = src.parent, layer = "node", dir = src.connecting_node.dir)
+		src.node_underlay = image(icon = 'icons/obj/fluidpipes/fluid_machines.dmi',loc = src.parent,icon_state = "port", dir = src.connecting_node.dir)
 	if(!(src.node_underlay in affected_parent.overlays))
 		affected_parent.underlays += src.node_underlay
 
