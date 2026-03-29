@@ -242,6 +242,7 @@
 /obj/machinery/was_built_from_frame(mob/user, newly_built)
 	. = ..()
 	src.power_change()
+	src.last_process = TIME
 
 /obj/machinery/proc/get_power_wire()
 	var/obj/cable/C = null
