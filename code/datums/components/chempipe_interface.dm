@@ -168,7 +168,7 @@ TYPEINFO(/datum/component/fluid_pipe_interface)
 /// This proc replaces a given port with an internal unary fluid node
 /// This proc returns TRUE if the port in question was sucessfully replaced
 /datum/component/fluid_pipe_interface/proc/replace_port(var/obj/machinery/fluid_machinery/unary/input/port_to_replace)
-	if(!istype(port_to_replace) || src.connecting_node)
+	if(!istype(port_to_replace) || src.connecting_node || port_to_replace.disposed || port_to_replace.qdeled)
 		return
 	//we save the location so we can set the new node to that location once we removed the port
 	var/port_direction = port_to_replace.dir
