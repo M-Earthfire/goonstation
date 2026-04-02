@@ -74,16 +74,17 @@ TYPEINFO(/datum/component/fluid_pipe_interface)
 	src.recreate_port(src.scanned_turf)
 	QDEL_NULL(src.node_underlay)
 
-/// This Proc searches on the parent's tile for a fluid port and tries to replace it
+/// This Proc pings on the scanned tile for a fluid port and tries to replace it
+/// Use this manually if you have should_scan_on_creation set to false and need to machine to grab a port
 /datum/component/fluid_pipe_interface/proc/rescan_for_port()
-	var/atom/affected_parent = src.parent
-	if(!isturf(affected_parent.loc))
+	if(!src.scanned_turf)
 		return
-	var/turf/turf_to_check = affected_parent.loc
-	for(var/obj/machinery/searched_machinery in turf_to_check.contents)
-		if(istype(searched_machinery, /obj/machinery/fluid_machinery/unary/input))
-			//if we found on on our tile, replace it
-			return src.replace_port(searched_machinery)
+	// we require this list so we can grab our object from the signal call
+	var/list/scan_list = list()
+	SEND_SIGNAL(src.scanned_turf, COMSIG_FLUID_PORT_PING, scan_list)
+	if(length(scan_list) > 0)
+		// it should only be a single port here, but in case someone dev'ed in more, we just pick a random one
+		return src.replace_port(pick(scan_list))
 
 
 /// ----------------------- Signal-related Procs -----------------------

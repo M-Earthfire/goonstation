@@ -94,6 +94,8 @@
 #define COMSIG_MACHINERY_REMOVE_FLUID_NODE "machinery_remove_fluid_node"
 /// sent when the fluid pipe gets initialized (thing)
 #define COMSIG_FLUID_PIPE_ON_INIT "fluid_pipe_on_init"
+/// this is used to receive a list with all fluid ports on a tile (thing, list_for_pipes)
+#define COMSIG_FLUID_PORT_PING "fluid_fluid_port_ping"
 
 // ---- atom/movable signals ----
 
