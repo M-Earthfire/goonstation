@@ -81,7 +81,7 @@ TYPEINFO(/datum/component/fluid_pipe_interface)
 		return
 	// we require this list so we can grab our object from the signal call
 	var/list/scan_list = list()
-	SEND_SIGNAL(src.scanned_turf, COMSIG_FLUID_PORT_PING, scan_list)
+	SEND_SIGNAL(src.scanned_turf, COMSIG_TURF_FLUID_PORT_PING, scan_list)
 	if(length(scan_list) > 0)
 		// it should only be a single port here, but in case someone dev'ed in more, we just pick a random one
 		return src.replace_port(pick(scan_list))

@@ -85,13 +85,13 @@ ABSTRACT_TYPE(/obj/machinery/fluid_machinery/unary)
 	flags = NOSPLASH | OPENCONTAINER | ACCEPTS_MOUSEDROP_REAGENTS
 	HELP_MESSAGE_OVERRIDE("You can connect glass plumbing to this machine. Can pull 100 units from a screwed barrel per cycle.")
 	var/obj/reagent_dispensers/chemicalbarrel/connectedcontainer = null
-	var/turf/scanned_turf = null //! this stores the turf this machine scans for COMSIG_FLUID_PORT_PING
+	var/turf/scanned_turf = null //! this stores the turf this machine scans for COMSIG_TURF_FLUID_PORT_PING
 
 /obj/machinery/fluid_machinery/unary/input/New()
 	. = ..()
 	SPAWN(0)
 		src.scanned_turf = get_turf(src)
-		RegisterSignal(src.scanned_turf, COMSIG_FLUID_PORT_PING, PROC_REF(on_turf_ping))
+		RegisterSignal(src.scanned_turf, COMSIG_TURF_FLUID_PORT_PING, PROC_REF(on_turf_ping))
 		SEND_SIGNAL(src.scanned_turf, COMSIG_TURF_FLUID_PORT_CREATED, src)
 
 /obj/machinery/fluid_machinery/unary/input/initialize()
@@ -101,7 +101,7 @@ ABSTRACT_TYPE(/obj/machinery/fluid_machinery/unary)
 
 /obj/machinery/fluid_machinery/unary/input/disposing()
 	if(src.scanned_turf)
-		UnregisterSignal(src.scanned_turf, COMSIG_FLUID_PORT_PING)
+		UnregisterSignal(src.scanned_turf, COMSIG_TURF_FLUID_PORT_PING)
 		src.scanned_turf = null
 	if(istype(src.reagents, /datum/reagents/flow_network))
 		// we need to specifically check for the flow network subtype here, because we ports and these nodes share the same datum
